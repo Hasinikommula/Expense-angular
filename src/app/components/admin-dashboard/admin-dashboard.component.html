@@ -1,0 +1,166 @@
+
+<!-- Navbar -->
+<nav class="navbar">
+  <div class="navbar-container">
+    <div class="logo">Admin Dashboard</div>
+    <div class="welcome">
+      <p class="subtitle">Manage Groups & Users</p>
+    </div>
+  </div>
+</nav>
+
+<!-- Dashboard Container -->
+<div class="dashboard-container">
+
+  <!-- Tabs -->
+  <div class="tabs">
+  <!-- Groups Tab -->
+  <button 
+    class="tab" 
+    [class.active]="activeSection === 'overview'" 
+    (click)="showSection('overview')">
+    Groups
+  </button>
+
+  <!-- Users Tab -->
+  <button 
+    class="tab" 
+    [class.active]="activeSection === 'users'" 
+    (click)="showSection('users')">
+    Users
+  </button>
+
+  <!-- Manage Users Tab -->
+  <button 
+    class="tab" 
+    [class.active]="activeSection === 'manage'" 
+    (click)="showSection('manage')">
+    Manage Users
+  </button>
+</div>
+
+<!-- Manage Users Section -->
+<div *ngIf="activeSection === 'manage'">
+  <div class="manage-section">
+    <h3>Assign User to Group</h3>
+    <button class="create-btn" (click)="showAssignForm = !showAssignForm">
+      + Assign
+    </button>
+  </div>
+
+  <!-- Inline Assign Form -->
+  <div *ngIf="showAssignForm" class="form-container">
+    <form class="inline-form" (ngSubmit)="addUserToGroup(AssigningGroup,Email)" #assignForm="ngForm">
+      <h3>Assign User</h3>
+      <input type="text" [(ngModel)]="AssigningGroup" name="GroupName" placeholder="Group Name" required />
+      <input type="email" [(ngModel)]="Email" name="Email" placeholder="User Email" required />
+
+      <div *ngIf="assignForm.submitted && assignForm.invalid" class="error-msg">
+        Group Name and Email are required.
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="save-btn">Assign</button>
+        <button type="button" class="cancel-btn" (click)="showAssignForm = false">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+  <!-- Groups Section -->
+  <div *ngIf="activeSection === 'overview'">
+    <div class="manage-section">
+      <h3>Groups</h3>
+      <button class="create-btn" (click)="toggleGroupForm()">
+        + Create Group
+      </button>
+    </div>
+
+    <!-- Inline Group Form -->
+    <div *ngIf="showGroupForm" class="form-container">
+      <form class="inline-form" (ngSubmit)="createGroup()" #groupForm="ngForm">
+        <h3>New Group</h3>
+        <input type="text" [(ngModel)]="newGroup.name" name="name" placeholder="Group Name" required />
+        <input type="text" [(ngModel)]="newGroup.description" name="description" placeholder="Description" />
+        <div class="form-actions">
+          <button type="submit" class="save-btn">Save</button>
+          <button type="button" class="cancel-btn" (click)="toggleGroupForm()">Cancel</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Groups List -->
+    <div class="group-list">
+      <div class="group-item" *ngFor="let g of groups">
+        <div>
+          <strong>{{ g.name }}</strong>
+          <p>{{ g.description }}</p>
+        </div>
+        <div>
+          <span>{{ g.members }} Members</span> | <span>Total: {{ g.total }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Users Section -->
+  <div *ngIf="activeSection === 'users'">
+  <div class="manage-section">
+    <h3>Users</h3>
+    <button class="create-btn" (click)="toggleUserForm()">
+      + Create User
+    </button>
+  </div>
+
+  <!-- Inline User Form -->
+  <div *ngIf="showUserForm" class="form-container">
+    <form class="inline-form" (ngSubmit)="createUser()" #userForm="ngForm">
+      <h3>New User</h3>
+      <input
+        type="text"
+        [(ngModel)]="newUser.username"
+        name="username"
+        placeholder="Username"
+        required
+      />
+      <input
+        type="email"
+        [(ngModel)]="newUser.email"
+        name="email"
+        placeholder="Email"
+        required
+      />
+      <input
+        type="password"
+        [(ngModel)]="newUser.password"
+        name="password"
+        placeholder="Password"
+        required
+      />
+
+      <!-- Validation messages -->
+      <div *ngIf="userForm.submitted && userForm.invalid" class="error-msg">
+        All fields are required.
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="save-btn">Save</button>
+        <button type="button" class="cancel-btn" (click)="toggleUserForm()">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+    <!-- Users List -->
+    <div class="user-list">
+      <div class="user-item" *ngFor="let u of users">
+        <div>
+          <strong>{{ u.name }}</strong>
+          <p>{{ u.email }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
