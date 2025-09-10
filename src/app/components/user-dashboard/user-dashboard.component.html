@@ -1,105 +1,48 @@
-<!-- Navbar -->
-<nav class="navbar fixed-top">
-  <div class="navbar-container">
-    <div class="logo">
-      <span class="logo-icon">💲</span> ExpenseShare
+<div class="dashboard-wrapper">
+  <header class="dashboard-header">
+    <div>
+    <h1>
+        <span class="splitwise-logo">&#36;</span> Your Groups </h1>
+    <p>Manage your shared expenses</p>
     </div>
-    <div class="nav-actions">
-      <button class="nav-btn" (click)="refreshDashboard()">⟳ Refresh</button>
-      <button class="nav-btn" (click)="openSettings()">⚙ Settings</button>
-      <button class="nav-btn" (click)="logout()">🚪 Logout</button>
-    </div>
-    <h1 class="welcome">Welcome, {{ currentUser?.username }}</h1>
-  </div>
-</nav>
-
-<div class="dashboard-container">
-  <!-- Groups List -->
-  <div *ngIf="view === 'dashboard'" class="section groups-list">
     <div class="header-actions">
-      <h2>Your Groups ({{ groups.length }})</h2>
-      <button class="create-btn" (click)="createNewGroup()">+ Create Group</button>
+      
+      <button class="logout-btn" (click)="logout()">Logout</button>
     </div>
-    <div class="group-list">
-      <div class="group-item" *ngFor="let group of groups" (click)="openGroup(group)">
-        <h3>{{ group.name }}</h3>
-        <p>{{ group.description }}</p>
-        <span>{{ group.members?.length || 0 }} members</span>
-      </div>
-    </div>
+  </header>
+
+  <div *ngIf="isLoading" class="loading-spinner">
+    Loading your groups...
   </div>
 
-  <!-- Group Details -->
-  <div *ngIf="view === 'groupDetail'" class="section group-details">
-    <div class="header-actions">
-      <button class="back-btn" (click)="goBack()">⬅ Back</button>
-      <button class="edit-btn" (click)="editGroup()">✎ Edit Group</button>
-    </div>
-    <h2>{{ selectedGroup?.name }}</h2>
-    <p>{{ selectedGroup?.description }}</p>
+  <div *ngIf="!isLoading && groups.length === 0" class="empty-state">
+    <p>You are not a part of any groups yet.</p>
+    <span>Ask an admin to assign you to a group to get started.</span>
+  </div>
 
-    <!-- Expenses -->
-    <div class="expenses">
-      <div class="header-actions">
-        <h3>Expenses</h3>
-        <button class="small-btn" (click)="addExpenseManually()">+ Add</button>
+  <div *ngIf="!isLoading" class="groups-grid">
+    <div class="group-card" *ngFor="let group of groups" (click)="viewGroup(group.id)">
+      <div class="card-header">
+        <h2>{{ group.name }}</h2>
+        <span class="arrow">→</span>
       </div>
-      <div class="expense-item" *ngFor="let expense of expenses">
-        <p><b>{{ expense.description }}</b> - ${{ expense.amount }}</p>
-        <p>Paid by: {{ expense.paidBy }}</p>
-      </div>
-    </div>
-
-    <!-- Add Expense Form -->
-    <div class="add-expense" *ngIf="showAddExpenseForm">
-      <h3>Add Expense</h3>
-      <form (ngSubmit)="addExpense()" #expenseForm="ngForm">
-        <input type="text" [(ngModel)]="newExpense.description" name="description" placeholder="Description" required />
-        <input type="number" [(ngModel)]="newExpense.amount" name="amount" placeholder="Amount" step="0.01" required />
-        <select [(ngModel)]="newExpense.paidBy" name="paidBy" required>
-          <option value="" disabled selected>Select payer</option>
-          <option *ngFor="let member of selectedGroup.members" [value]="member.username">
-            {{ member.username }}
-          </option>
-        </select>
-        <div class="form-actions">
-          <button type="submit" class="save-btn">Save</button>
-          <button type="button" class="cancel-btn" (click)="cancelAddExpense()">Cancel</button>
+      <p class="card-description">{{ group.description }}</p>
+      
+      <div class="card-info">
+        <div class="info-item">
+          <span class="icon">👥</span>
+          <span>{{ group.memberCount }} members</span>
         </div>
-      </form>
-    </div>
-
-    <!-- Balance Summary -->
-    <div class="balance-summary">
-      <h3>Balance Summary</h3>
-      <div class="balance-item" *ngFor="let bal of balances">
-        <p>{{ bal.from }} owes {{ bal.to }}: ${{ bal.amount.toFixed(2) }}</p>
-      </div>
-    </div>
-
-    <!-- Payment Interface -->
-    <div class="payment-interface">
-      <h3>Make Payment</h3>
-      <form (ngSubmit)="makePayment()" #paymentForm="ngForm">
-        <select [(ngModel)]="payment.from" name="from" required>
-          <option value="" disabled selected>Select payer</option>
-          <option *ngFor="let member of selectedGroup.members" [value]="member.username">
-            {{ member.username }}
-          </option>
-        </select>
-        <select [(ngModel)]="payment.to" name="to" required>
-          <option value="" disabled selected>Select receiver</option>
-          <option *ngFor="let member of selectedGroup.members" [value]="member.username">
-            {{ member.username }}
-          </option>
-        </select>
-        <input type="number" [(ngModel)]="payment.amount" name="amount" placeholder="Amount" step="0.01" required />
-        <div class="form-actions">
-          <button type="submit" class="pay-btn">Pay (Dummy)</button>
-          <button type="button" class="cancel-btn" (click)="cancelPayment()">Cancel</button>
+        <div class="info-item">
+          <span class="icon">💰</span>
+          <span>Total: ₹{{ group.totalAmount | number:'1.2-2' }}</span>
         </div>
-        <p *ngIf="paymentMessage" class="payment-message">{{ paymentMessage }}</p>
-      </form>
+      </div>
+      
+      <div class="card-balance" [ngClass]="getBalanceClass(group.userBalance)">
+        <span class="balance-label">{{ getBalanceLabel(group.userBalance) }}</span>
+        <span class="balance-amount">₹{{ getAbsValue(group.userBalance) | number:'1.2-2' }}</span>
+      </div>
     </div>
   </div>
 </div>

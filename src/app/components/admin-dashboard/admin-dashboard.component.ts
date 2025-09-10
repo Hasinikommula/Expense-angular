@@ -3,6 +3,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { GroupService } from '../../Services/group.service';
+import { Router } from '@angular/router';
 
 interface User {
   id: number;
@@ -16,6 +17,11 @@ interface Group {
   description: string;
   members: number;
   total: number;
+}
+
+interface Assignment {
+  userEmail: string;
+  groupName: string;
 }
 
 @Component({
@@ -34,6 +40,8 @@ export class AdminDashboardComponent implements OnInit {
   showGroupForm = false;
 
   showAssignForm = false; 
+  assignments: Assignment[] = [];
+  successMessage: string = '';
 
   // Form models
   newUser = { username: '', email: '', password: '' };
@@ -43,11 +51,12 @@ export class AdminDashboardComponent implements OnInit {
 
   private readonly apiUrl = 'https://localhost:44331/api';
 
-  constructor(private http: HttpClient,private groupService:GroupService) {}
+  constructor(private http: HttpClient,private groupService:GroupService,private router:Router) {}
 
   ngOnInit(): void {
     this.getUsers();
     this.getGroups();
+    this.getAssignments();
   }
 
   private getAuthHeaders() {
@@ -61,6 +70,7 @@ export class AdminDashboardComponent implements OnInit {
     this.activeSection = section;
     if (section === 'overview') this.getGroups();
     if (section === 'users') this.getUsers();
+    if(section==='manage') this.getAssignments();
   }
 
   // Toggle forms
@@ -76,6 +86,14 @@ export class AdminDashboardComponent implements OnInit {
     this.http.get<any[]>(`${this.apiUrl}/user`, this.getAuthHeaders()).subscribe({
       next: res => this.users = res.map(u => ({ id: u.id, name: u.username, email: u.email })),
       error: err => console.error(err)
+    });
+  }
+  getAssignments() {
+    this.http.get<Assignment[]>(`${this.apiUrl}/group/assignments`, this.getAuthHeaders()).subscribe({
+      next: res => {
+        this.assignments = res;
+      },
+      error: err => console.error('Failed to fetch assignments', err)
     });
   }
 
@@ -95,18 +113,22 @@ export class AdminDashboardComponent implements OnInit {
   });
 }
   // Groups
-  getGroups() {
-    this.http.get<any[]>(`${this.apiUrl}/group/Getallgroups`, this.getAuthHeaders()).subscribe({
-      next: res => this.groups = res.map(g => ({
+getGroups() {
+  this.http.get<any[]>(`${this.apiUrl}/group/Getallgroups`, this.getAuthHeaders()).subscribe({
+    next: (res) => {
+      this.groups = res.map(g => ({
         id: g.id,
         name: g.name,
         description: g.description || '',
-        members: g.members ? g.members.length : 0,
-        total: g.total ?? 0
-      })),
-      error: err => console.error(err)
-    });
-  }
+        members: g.memberCount, 
+        total: g.total ?? 0 
+      }));
+    },
+    error: (err) => {
+      console.error('Failed to get groups:', err);
+    }
+  });
+}
 
   createGroup() {
     this.http.post<any>(`${this.apiUrl}/group/CreateGroup`, this.newGroup, this.getAuthHeaders()).subscribe({
@@ -122,6 +144,7 @@ export class AdminDashboardComponent implements OnInit {
   addUserToGroup(GroupName: string, email: string) {
   this.groupService.addUserToGroup(GroupName, email).subscribe({
     next: (res) => {
+      alert("successfully added user to the group");
       console.log(`User ${email} added to group ${GroupName}`, res);
       this.Email = '';
       this.AssigningGroup = '';
@@ -131,5 +154,8 @@ export class AdminDashboardComponent implements OnInit {
     }
   });
 }
+logout(){
+     localStorage.removeItem('token');
+      this.router.navigate(['/login']);
+  }
 }
-

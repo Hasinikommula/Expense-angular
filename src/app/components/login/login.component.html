@@ -1,0 +1,63 @@
+<div class="auth-wrapper">
+  <div class="auth-card">
+    <h2 class="auth-title">Sign In</h2>
+
+    <form #formRef="ngForm" (ngSubmit)="handleLogin()" novalidate>
+      <div class="form-field">
+        <label for="userEmail">Email</label>
+        <input
+          id="userEmail"
+          type="email"
+          name="userEmail"
+          [(ngModel)]="formData.email"
+          required
+          email
+          #emailField="ngModel"
+        />
+
+        <div class="validation" *ngIf="emailField.invalid && emailField.touched">
+          <small *ngIf="emailField.errors?.['required']">Email is required</small>
+          <small *ngIf="emailField.errors?.['email']">Invalid email format</small>
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label for="userPassword">Password</label>
+        <input
+          id="userPassword"
+          type="password"
+          name="userPassword"
+          [(ngModel)]="formData.password"
+          required
+          minlength="6"
+          #passwordField="ngModel"
+        />
+
+        <div
+          class="validation"
+          *ngIf="passwordField.invalid && passwordField.touched"
+        >
+          <small *ngIf="passwordField.errors?.['required']">
+            Password is required
+          </small>
+          <small *ngIf="passwordField.errors?.['minlength']">
+            Password must be at least 6 characters
+          </small>
+        </div>
+      </div>
+
+      <p class="error-msg" *ngIf="loginError">{{ loginError }}</p>
+
+      <button type="submit" [disabled]="formRef.invalid || loading">
+        {{ loading ? "Signing in..." : "Login" }}
+      </button>
+    </form>
+
+    <div class="demo-credentials" style="margin-top: 20px; text-align: left; font-size: 0.9em; color: #555;">
+      <h4 style="margin-bottom: 8px; font-weight: bold;">Demo Admin</h4>
+      <p style="margin: 4px 0;"><strong>Email:</strong> srinivas&#64;gmail.com</p>
+      <p style="margin: 4px 0;"><strong>Password:</strong> srinivas&#64;123</p>
+    </div>
+    
+  </div>
+</div>

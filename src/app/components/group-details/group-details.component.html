@@ -1,0 +1,112 @@
+<div class="detail-wrapper">
+  <a routerLink="/user-dashboard" class="back-link">← Back to Groups</a>
+  
+  <div *ngIf="isLoading" class="loading-spinner">Loading group details...</div>
+
+  <div *ngIf="!isLoading && group">
+    <header class="detail-header">
+      <h1>{{ group.name }}</h1>
+      <div class="header-actions">
+        <button class="pay-btn" (click)="showPaymentModal = true">💸 Pay</button>
+        <button class="add-expense-btn" (click)="showExpenseModal = true">+ Add Expense</button>
+      </div>
+    </header>
+
+    <div class="detail-grid">
+      <div class="expenses-column">
+        <h3>Expenses</h3>
+        <div *ngIf="expenses.length === 0" class="card empty-list">No expenses added yet.</div>
+        <div class="expense-list">
+          <div class="card expense-item" *ngFor="let expense of expenses">
+            <div class="expense-info">
+              <h4>{{ expense.description }}</h4>
+              <p>Paid by {{ expense.paidByName }} on {{ expense.createdAt | date:'MMM d, y' }}</p>
+            </div>
+            <div class="expense-amount">
+              <span>₹{{ expense.amount | number:'1.2-2' }}</span>
+              <small *ngIf="group?.members?.length > 0">₹{{ (expense.amount / group.members.length) | number:'1.2-2' }} per person</small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="balances-column">
+        <h3>Balances</h3>
+        <div class="card balance-list">
+           <div class="balance-item" *ngFor="let balance of balances | keyvalue">
+              <span>{{ getMemberName(+balance.key) }}</span>
+              <span class="balance-value" [ngClass]="getBalanceClass(balance.value)">
+                {{ balance.value >= 0 ? '+' : '' }}{{ balance.value | number:'1.2-2' }}
+              </span>
+           </div>
+        </div>
+
+        <h3>Suggested Settlements</h3>
+         <div class="card settlement-list">
+            <div *ngIf="settlements.length === 0" class="empty-list-small">All settled up!</div>
+             <div class="settlement-item" *ngFor="let settlement of settlements">
+                <span><strong>{{ settlement.fromUserName }}</strong> → <strong>{{ settlement.toUserName }}</strong></span>
+                <span class="settlement-amount">₹{{ settlement.amount | number:'1.2-2' }}</span>
+             </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" *ngIf="showExpenseModal" (click)="showExpenseModal = false">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <form (ngSubmit)="onAddExpense()">
+      <div class="modal-header">
+        <h2>Add New Expense</h2>
+        <button type="button" class="close-btn" (click)="showExpenseModal = false">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>Add an expense that you paid for the group. It will be split equally among all members.</p>
+        <div class="form-group">
+          <label for="description">Description</label>
+          <input id="description" type="text" [(ngModel)]="newExpense.description" name="description" required placeholder="e.g., Dinner at restaurant">
+        </div>
+        <div class="form-group">
+          <label for="amount">Amount (₹)</label>
+          <input id="amount" type="number" [(ngModel)]="newExpense.amount" name="amount" required placeholder="0.00">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" (click)="showExpenseModal = false">Cancel</button>
+        <button type="submit" class="btn-primary">Add Expense</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-backdrop" *ngIf="showPaymentModal" (click)="showPaymentModal = false">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <form (ngSubmit)="onMakePayment()">
+      <div class="modal-header">
+        <h2>Record a Payment</h2>
+        <button type="button" class="close-btn" (click)="showPaymentModal = false">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>Record a payment you made to another group member to settle your debts.</p>
+        <div class="form-group">
+          <label for="toUserId">Recipient (Who you paid)</label>
+          <select id="toUserId" [(ngModel)]="newPayment.toUserId" name="toUserId" required>
+            <option [ngValue]="null" disabled>Select a member</option>
+            <option *ngFor="let member of group.members" [ngValue]="member.id">
+              {{ member.username }}
+            </option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="paymentAmount">Amount (₹)</label>
+          <input id="paymentAmount" type="number" [(ngModel)]="newPayment.amount" name="paymentAmount" required placeholder="0.00">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" (click)="showPaymentModal = false">Cancel</button>
+        <button type="submit" class="btn-primary">Record Payment</button>
+      </div>
+    </form>
+  </div>
+</div>
