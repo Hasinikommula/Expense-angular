@@ -7,7 +7,7 @@ import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-group-detail',
-  standalone: true,
+  
   imports: [CommonModule, RouterModule, FormsModule, KeyValuePipe],
   templateUrl: './group-details.component.html',
   styleUrls: ['./group-details.component.css']
