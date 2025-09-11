@@ -7,7 +7,7 @@
     <header class="detail-header">
       <h1>{{ group.name }}</h1>
       <div class="header-actions">
-        <button class="pay-btn" (click)="showPaymentModal = true">💸 Pay</button>
+        <button class="pay-btn" (click)="showPaymentModal = true">💸 Record Payment</button>
         <button class="add-expense-btn" (click)="showExpenseModal = true">+ Add Expense</button>
       </div>
     </header>
@@ -17,14 +17,15 @@
         <h3>Expenses</h3>
         <div *ngIf="expenses.length === 0" class="card empty-list">No expenses added yet.</div>
         <div class="expense-list">
+          <!-- The "Paid by" username already exists here and will work correctly -->
           <div class="card expense-item" *ngFor="let expense of expenses">
             <div class="expense-info">
               <h4>{{ expense.description }}</h4>
-              <p>Paid by {{ expense.paidByName }} on {{ expense.createdAt | date:'MMM d, y' }}</p>
+              <p>Paid by {{ getMemberName(expense.paidById) }} on {{ expense.createdAt | date:'MMM d, y' }}</p>
             </div>
             <div class="expense-amount">
-              <span>₹{{ expense.amount | number:'1.2-2' }}</span>
-              <small *ngIf="group?.members?.length > 0">₹{{ (expense.amount / group.members.length) | number:'1.2-2' }} per person</small>
+              <span>{{ expense.amount | currency:'INR':'symbol':'1.2-2' }}</span>
+              <small *ngIf="group?.members?.length > 0">{{ (expense.amount / group.members.length) | currency:'INR':'symbol':'1.2-2' }} per person</small>
             </div>
           </div>
         </div>
@@ -34,25 +35,63 @@
         <h3>Balances</h3>
         <div class="card balance-list">
            <div class="balance-item" *ngFor="let balance of balances | keyvalue">
-              <span>{{ getMemberName(+balance.key) }}</span>
-              <span class="balance-value" [ngClass]="getBalanceClass(balance.value)">
-                {{ balance.value >= 0 ? '+' : '' }}{{ balance.value | number:'1.2-2' }}
-              </span>
+             <span>{{ getMemberName(+balance.key) }}</span>
+             <span class="balance-value" [ngClass]="getBalanceClass(+balance.value)">
+               {{ +balance.value >= 0 ? '+' : '' }}{{ balance.value | currency:'INR':'symbol':'1.2-2' }}
+             </span>
            </div>
         </div>
 
         <h3>Suggested Settlements</h3>
-         <div class="card settlement-list">
-            <div *ngIf="settlements.length === 0" class="empty-list-small">All settled up!</div>
-             <div class="settlement-item" *ngFor="let settlement of settlements">
-                <span><strong>{{ settlement.fromUserName }}</strong> → <strong>{{ settlement.toUserName }}</strong></span>
-                <span class="settlement-amount">₹{{ settlement.amount | number:'1.2-2' }}</span>
-             </div>
+        <div class="card settlement-list">
+          <div *ngIf="!settlements || settlements.length === 0" class="empty-list-small">All settled up!</div>
+           <div class="settlement-item" *ngFor="let settlement of settlements">
+             <span><strong>{{ settlement.fromUserName }}</strong> → <strong>{{ settlement.toUserName }}</strong></span>
+             <span class="settlement-amount">{{ settlement.amount | currency:'INR':'symbol':'1.2-2' }}</span>
+           </div>
+        </div>
+
+        <!-- NEW: PAYMENT RECORDS SECTION -->
+        <h3>Payment Records</h3>
+        <div class="card">
+          <h4 class="payment-section-header">Pending Confirmation</h4>
+          <div class="payment-list">
+            <ng-container *ngFor="let payment of payments">
+              <div *ngIf="!payment.isCompleted" class="payment-item">
+                <div class="payment-info">
+                  <p><strong>{{ getMemberName(payment.fromUserId) }}</strong> paid <strong>{{ getMemberName(payment.toUserId) }}</strong></p>
+                  <small>{{ payment.createdAt | date:'MMM d, h:mm a' }}</small>
+                </div>
+                <div class="payment-amount">{{ payment.amount | currency:'INR':'symbol':'1.2-2' }}</div>
+                <button *ngIf="currentUserId === payment.toUserId" class="confirm-btn" (click)="onCompletePayment(payment.id)">
+                  Confirm
+                </button>
+              </div>
+            </ng-container>
+            <div *ngIf="!hasPendingPayments" class="empty-list-small">No pending payments.</div>
+          </div>
+
+          <hr class="divider">
+
+          <h4 class="payment-section-header">History</h4>
+          <div class="payment-list">
+            <ng-container *ngFor="let payment of payments">
+              <div *ngIf="payment.isCompleted" class="payment-item completed">
+                <div class="payment-info">
+                  <p><strong>{{ payment.fromUserName }}</strong> paid <strong>{{ payment.toUserName }}</strong></p>
+                  <small>{{ payment.createdAt | date:'MMM d, h:mm a' }}</small>
+                </div>
+                <div class="payment-amount">{{ payment.amount | currency:'INR':'symbol':'1.2-2' }}</div>
+              </div>
+            </ng-container>
+            <div *ngIf="!hasCompletedPayments" class="empty-list-small">No completed payments yet.</div>
+          </div>
         </div>
       </div>
     </div>
   </div>
 </div>
+
 
 <div class="modal-backdrop" *ngIf="showExpenseModal" (click)="showExpenseModal = false">
   <div class="modal-content" (click)="$event.stopPropagation()">

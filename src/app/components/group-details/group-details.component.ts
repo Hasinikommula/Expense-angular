@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute,  RouterModule } from '@angular/router';
+import { ActivatedRoute, RouterModule } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { forkJoin } from 'rxjs';
 import { CommonModule, KeyValuePipe } from '@angular/common';
@@ -7,7 +7,7 @@ import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-group-detail',
-  
+  standalone: true,
   imports: [CommonModule, RouterModule, FormsModule, KeyValuePipe],
   templateUrl: './group-details.component.html',
   styleUrls: ['./group-details.component.css']
@@ -20,21 +20,23 @@ export class GroupDetailsComponent implements OnInit {
   isLoading = true;
   groupId!: number;
   
+  payments: any[] = [];
+  currentUserId: number | null = null; 
+
   showExpenseModal = false;
   newExpense = {
     description: '',
     amount: null,
-    paidById: 0, // Will be set to the current user's ID
+    paidById: 0,
     groupId: 0
   };
 
   showPaymentModal = false;
   newPayment = {
-    fromUserId: 0, // Will be set to the current user's ID
-    toUserId: null as number | null, // The person they are paying
-    amount: null as number | null,
+    toUserId: null,
+    amount: null,
     groupId: 0,
-    isCompleted: true // Automatically mark as completed
+    fromUserId: 0
   };
 
   private apiUrl = 'https://localhost:44331/api'; 
@@ -44,22 +46,24 @@ export class GroupDetailsComponent implements OnInit {
     private http: HttpClient
   ) {}
 
+  get hasPendingPayments(): boolean {
+    return this.payments.some(p => !p.isCompleted);
+  }
+
+  get hasCompletedPayments(): boolean {
+    return this.payments.some(p => p.isCompleted);
+  }
+
   ngOnInit(): void {
     const idParam = this.route.snapshot.paramMap.get('id');
     if (idParam) {
-     this.groupId = +idParam;
-    this.newExpense.groupId = this.groupId;
-    this.newPayment.groupId = this.groupId;
-
-    //Gets the current user's ID once from localStorage
-    const currentUserId = parseInt(localStorage.getItem('userId') || '0', 10);
-
-    //Assigns the ID to both newExpense and newPayment
-    this.newExpense.paidById = currentUserId;
-    this.newPayment.fromUserId = currentUserId;
-    
-    //Loads all the data
-    this.loadAllGroupData();
+      this.groupId = +idParam;
+      this.newExpense.groupId = this.groupId;
+      this.newPayment.groupId = this.groupId;
+      this.currentUserId = parseInt(localStorage.getItem('userId') || '0', 10);
+      this.newExpense.paidById = this.currentUserId;
+      this.newPayment.fromUserId = this.currentUserId;
+      this.loadAllGroupData();
     }
   }
   
@@ -73,16 +77,20 @@ export class GroupDetailsComponent implements OnInit {
 
   loadAllGroupData(): void {
     this.isLoading = true;
-    const groupDetails$ = this.http.get(`${this.apiUrl}/group/${this.groupId}/details`, { headers: this.getAuthHeaders() });
-    const expenses$ = this.http.get(`${this.apiUrl}/expense/group/${this.groupId}`, { headers: this.getAuthHeaders() });
-    const balances$ = this.http.get(`${this.apiUrl}/expense/group/${this.groupId}/balances`, { headers: this.getAuthHeaders() });
+    const headers = this.getAuthHeaders();
+    const groupDetails$ = this.http.get(`${this.apiUrl}/group/${this.groupId}/details`, { headers });
+    const expenses$ = this.http.get(`${this.apiUrl}/expense/group/${this.groupId}`, { headers });
+    const balances$ = this.http.get(`${this.apiUrl}/expense/group/${this.groupId}/balances`, { headers });
+    const payments$ = this.http.get(`${this.apiUrl}/payment/group/${this.groupId}`, { headers });
 
-    forkJoin([groupDetails$, expenses$, balances$]).subscribe({
-      next: ([groupData, expenseData, balanceData]: [any, any, any]) => {
+    forkJoin([groupDetails$, expenses$, balances$, payments$]).subscribe({
+      next: ([groupData, expenseData, balanceData, paymentData]: [any, any, any, any]) => {
         this.group = groupData;
-        this.expenses = expenseData;
+        // Sorting expenses to show newest first
+        this.expenses = expenseData.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         this.balances = balanceData.balances;
         this.settlements = balanceData.settlements;
+        this.payments = paymentData.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         this.isLoading = false;
       },
       error: (err) => {
@@ -91,39 +99,56 @@ export class GroupDetailsComponent implements OnInit {
       }
     });
   }
- onMakePayment(): void {
-  // --- Validation checks ---
-  if (!this.newPayment.toUserId || !this.newPayment.amount || this.newPayment.amount <= 0) {
-    alert('Please select a recipient and enter a valid amount.');
-    return;
-  }
-  if (this.newPayment.fromUserId === this.newPayment.toUserId) {
-    alert("You cannot record a payment to yourself.");
-    return;
-  }
 
+  onMakePayment(): void {
+    if (!this.newPayment.toUserId || !this.newPayment.amount || this.newPayment.amount <= 0) {
+      alert('Please select a recipient and enter a valid amount.');
+      return;
+    }
+    if (this.newPayment.fromUserId === this.newPayment.toUserId) {
+      alert("You cannot record a payment to yourself.");
+      return;
+    }
+    
+    this.http.post(`${this.apiUrl}/payment`, this.newPayment, { headers: this.getAuthHeaders() })
+      .subscribe({
+        next: () => {
+          this.showPaymentModal = false;
+          this.newPayment.toUserId = null;
+          this.newPayment.amount = null;
+          this.loadAllGroupData();
+        },
+        error: (err) => {
+          console.error('Failed to record payment', err);
+          alert('Error recording payment. Please try again.');
+        }
+      });
+  }
   
-  this.http.post(`${this.apiUrl}/payment`, this.newPayment, { headers: this.getAuthHeaders() })
-    .subscribe({
-      next: (response: any) => {
-        console.log('Payment recorded. API response:', response);
-        
-       
-        this.balances = response.balances;
-        this.settlements = response.settlements;
-
-        // Closes the modal and reset the form
-        this.showPaymentModal = false;
-        this.newPayment.toUserId = null;
-        this.newPayment.amount = null;
-      },
-      error: (err) => {
-        console.error('Failed to record payment', err);
-        alert('Error recording payment. Please try again.');
-      }
-  });
-}
-
+  onCompletePayment(paymentId: number): void {
+    
+    if (!confirm('Are you sure you have received this payment? This will permanently update the group balances.')) {
+        return;
+    }
+    this.http.put(`${this.apiUrl}/payment/${paymentId}/complete`, {}, { headers: this.getAuthHeaders() })
+        .subscribe({
+            next: (response: any) => {
+              
+                this.balances = response.balances;
+                this.settlements = response.settlements;
+              
+                const confirmedPayment = this.payments.find(p => p.id === paymentId);
+                if (confirmedPayment) {
+                    confirmedPayment.isCompleted = true;
+                }
+            },
+            error: (err) => {
+                console.error('Failed to confirm payment', err);
+                alert('An error occurred while confirming the payment.');
+            }
+        });
+  }
+ //helper method
   getMemberName(memberId: number): string {
     const member = this.group?.members.find((m: any) => m.id === memberId);
     return member ? member.username : 'Unknown';
@@ -142,11 +167,13 @@ export class GroupDetailsComponent implements OnInit {
     }
 
     this.http.post(`${this.apiUrl}/expense`, this.newExpense, { headers: this.getAuthHeaders() }).subscribe({
-      next: () => {
+      next: (response: any) => {
         this.showExpenseModal = false;
         this.newExpense.description = '';
         this.newExpense.amount = null;
-        this.loadAllGroupData(); // Refreshes the data
+        this.balances = response.balances;
+        this.settlements = response.settlements;
+        this.loadAllGroupData(); //  reloads all data including the new expense
       },
       error: (err) => {
         console.error('Failed to add expense', err);
